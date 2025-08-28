@@ -1,0 +1,15 @@
+{
+  "client_id": "a7995dc9-f49d-4b14-acbd-84368e7bc7cf",
+  "authorization_user_agent": "DEFAULT",
+  "redirect_uri": "msauth://com.example.vodafoneempinfo/LYffA4TMts0XsaQf%2F1DG6xWjDzg%3D",
+  "account_mode": "MULTIPLE",
+  "authorities": [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADMultipleOrgs",
+        "tenant_id": "organizations"
+      }
+    }
+  ]
+}
