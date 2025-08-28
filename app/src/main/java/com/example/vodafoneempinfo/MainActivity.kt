@@ -45,11 +45,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var authRepository: AuthRepository
+
+    @Inject
+    lateinit var authManager: AuthManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Set the activity-scoped AuthRepository in the AuthManager
+        authManager.setAuthRepository(authRepository)
+
         enableEdgeToEdge()
         setContent {
             VodafoneEmpInfoAppTheme {
@@ -65,6 +77,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Clear the AuthRepository reference to prevent memory leaks
+        authManager.clearAuthRepository()
     }
 }
 

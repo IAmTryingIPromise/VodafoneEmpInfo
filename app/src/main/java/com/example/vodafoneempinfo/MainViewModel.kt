@@ -13,12 +13,11 @@ import kotlin.text.isBlank
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    private val authManager: AuthManager,
     private val sharePointRepository: SharePointRepository
 ) : ViewModel() {
 
-    private val _authState = MutableStateFlow(AuthState())
-    val authState: StateFlow<AuthState> = _authState.asStateFlow()
+    val authState: StateFlow<AuthState> = authManager.authState
 
     private val _appState = MutableStateFlow(AppState())
     val appState: StateFlow<AppState> = _appState.asStateFlow()
@@ -30,55 +29,19 @@ class MainViewModel @Inject constructor(
     private fun initializeMsal() {
         viewModelScope.launch {
             try {
-                _authState.value = _authState.value.copy(isLoading = true)
-                authRepository.initializeMsal()
-
-                // Try to get token silently
-                tryAcquireTokenSilent()
+                authManager.initializeMsal()
             } catch (e: Exception) {
-                _authState.value = _authState.value.copy(
-                    isLoading = false,
-                    error = "Failed to initialize authentication: ${e.message}"
-                )
+                // AuthManager handles state updates internally
             }
-        }
-    }
-
-    private suspend fun tryAcquireTokenSilent() {
-        try {
-            val token = authRepository.acquireTokenSilent()
-            _authState.value = _authState.value.copy(
-                isLoading = false,
-                isAuthenticated = true,
-                accessToken = token,
-                error = null
-            )
-        } catch (e: Exception) {
-            _authState.value = _authState.value.copy(
-                isLoading = false,
-                isAuthenticated = false,
-                error = null // Silent failure is expected if no account exists
-            )
         }
     }
 
     fun signIn() {
         viewModelScope.launch {
             try {
-                _authState.value = _authState.value.copy(isLoading = true, error = null)
-                val token = authRepository.acquireTokenInteractive()
-                _authState.value = _authState.value.copy(
-                    isLoading = false,
-                    isAuthenticated = true,
-                    accessToken = token,
-                    error = null
-                )
+                authManager.signIn()
             } catch (e: Exception) {
-                _authState.value = _authState.value.copy(
-                    isLoading = false,
-                    isAuthenticated = false,
-                    error = "Sign in failed: ${e.message}"
-                )
+                // AuthManager handles state updates internally
             }
         }
     }
@@ -86,15 +49,10 @@ class MainViewModel @Inject constructor(
     fun signOut() {
         viewModelScope.launch {
             try {
-                _authState.value = _authState.value.copy(isLoading = true)
-                authRepository.signOut()
-                _authState.value = AuthState() // Reset to initial state
+                authManager.signOut()
                 _appState.value = AppState() // Reset app state
             } catch (e: Exception) {
-                _authState.value = _authState.value.copy(
-                    isLoading = false,
-                    error = "Sign out failed: ${e.message}"
-                )
+                // AuthManager handles state updates internally
             }
         }
     }
@@ -104,7 +62,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun getFileContent() {
-        val currentAuthState = _authState.value
+        val currentAuthState = authManager.authState.value
         val currentAppState = _appState.value
 
         if (!currentAuthState.isAuthenticated || currentAuthState.accessToken == null) {
@@ -157,6 +115,6 @@ class MainViewModel @Inject constructor(
 
     fun clearError() {
         _appState.value = _appState.value.copy(error = null)
-        _authState.value = _authState.value.copy(error = null)
+        authManager.clearError()
     }
 }
