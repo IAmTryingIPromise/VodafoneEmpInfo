@@ -6,19 +6,18 @@ import com.microsoft.identity.client.*
 import com.microsoft.identity.client.exception.MsalException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
-import javax.inject.Singleton
 import kotlin.collections.first
 import kotlin.collections.isNullOrEmpty
 import kotlin.collections.toList
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-@Singleton
 class AuthRepository @Inject constructor(
     private val context: Context
 ) {
 
     private var publicClientApp: IPublicClientApplication? = null
+
     private val scopes = listOf(
         "https://graph.microsoft.com/User.Read",
         "https://graph.microsoft.com/Sites.ReadWrite.All",
@@ -95,13 +94,21 @@ class AuthRepository @Inject constructor(
     suspend fun acquireTokenInteractive(): String? {
         return suspendCancellableCoroutine { continuation ->
             val app = publicClientApp as? IMultipleAccountPublicClientApplication
+
             if (app == null) {
                 continuation.resumeWithException(Exception("MSAL not initialized"))
                 return@suspendCancellableCoroutine
             }
 
+            // Use the context directly - it should be an Activity context from the ActivityComponent
+            val activity = context as? Activity
+            if (activity == null) {
+                continuation.resumeWithException(Exception("Context is not an Activity"))
+                return@suspendCancellableCoroutine
+            }
+
             val parameters = AcquireTokenParameters.Builder()
-                .startAuthorizationFromActivity(context as Activity)
+                .startAuthorizationFromActivity(activity)
                 .withScopes(scopes)
                 .withCallback(object : AuthenticationCallback {
                     override fun onSuccess(authenticationResult: IAuthenticationResult?) {
@@ -156,6 +163,18 @@ class AuthRepository @Inject constructor(
                     continuation.resumeWithException(exception ?: Exception("Failed to sign out"))
                 }
             })
+        }
+    }
+
+    // Method for getting access token - primarily tries silent authentication
+    suspend fun getAccessToken(): String? {
+        return try {
+            // Try silent token acquisition first
+            acquireTokenSilent()
+        } catch (e: Exception) {
+            // For Excel repository, we'll only try silent authentication
+            // Interactive authentication should be handled through the main UI flow
+            throw Exception("Authentication required. Please sign in through the main screen.")
         }
     }
 }

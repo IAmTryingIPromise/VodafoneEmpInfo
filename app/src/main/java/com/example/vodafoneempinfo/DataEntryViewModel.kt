@@ -1,7 +1,5 @@
 package com.example.vodafoneempinfo
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +22,10 @@ class DataEntryViewModel @Inject constructor(
     private val _employees = MutableStateFlow<List<Employee>>(emptyList())
     val employees: StateFlow<List<Employee>> = _employees.asStateFlow()
 
+    // New state for export functionality
+    private val _exportState = MutableStateFlow(ExportUiState())
+    val exportState: StateFlow<ExportUiState> = _exportState.asStateFlow()
+
     init {
         loadEmployees()
     }
@@ -34,6 +36,7 @@ class DataEntryViewModel @Inject constructor(
         }
     }
 
+    // Existing import functions...
     fun updateSelectedEmployee(employee: Employee) {
         _uiState.value = _uiState.value.copy(
             dataEntry = _uiState.value.dataEntry.copy(name = employee.displayName)
@@ -267,6 +270,7 @@ class DataEntryViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+        _exportState.value = _exportState.value.copy(errorMessage = null)
     }
 
     fun clearSuccessFlag() {
@@ -288,6 +292,72 @@ class DataEntryViewModel @Inject constructor(
 
         return previousMonthDays + currentMonthDays
     }
+
+    // NEW EXPORT FUNCTIONALITY FUNCTIONS
+
+    fun updateExportSelectedEmployee(employee: Employee) {
+        _exportState.value = _exportState.value.copy(
+            selectedEmployeeName = employee.displayName
+        )
+    }
+
+    fun updateExportDate(date: String) {
+        _exportState.value = _exportState.value.copy(
+            selectedDate = date
+        )
+    }
+
+    fun exportData() {
+        val currentState = _exportState.value
+
+        if (currentState.selectedEmployeeName.isEmpty() || currentState.selectedDate.isEmpty()) {
+            _exportState.value = currentState.copy(
+                errorMessage = "Please select both employee name and date"
+            )
+            return
+        }
+
+        _exportState.value = currentState.copy(isLoading = true, errorMessage = null)
+
+        viewModelScope.launch {
+            try {
+                val result = excelRepository.getEmployeeData(
+                    employeeName = currentState.selectedEmployeeName,
+                    date = currentState.selectedDate
+                )
+
+                result.fold(
+                    onSuccess = { employeeData ->
+                        _exportState.value = _exportState.value.copy(
+                            isLoading = false,
+                            exportedData = employeeData,
+                            errorMessage = null,
+                            hasData = true
+                        )
+                    },
+                    onFailure = { exception ->
+                        _exportState.value = _exportState.value.copy(
+                            isLoading = false,
+                            errorMessage = exception.message ?: "Failed to retrieve data"
+                        )
+                    }
+                )
+            } catch (e: Exception) {
+                _exportState.value = _exportState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "An unexpected error occurred"
+                )
+            }
+        }
+    }
+
+    fun clearExportData() {
+        _exportState.value = ExportUiState()
+    }
+
+    fun clearExportError() {
+        _exportState.value = _exportState.value.copy(errorMessage = null)
+    }
 }
 
 data class DataEntryUiState(
@@ -295,4 +365,14 @@ data class DataEntryUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isSubmissionSuccessful: Boolean = false
+)
+
+// New data class for export functionality
+data class ExportUiState(
+    val selectedEmployeeName: String = "",
+    val selectedDate: String = "",
+    val exportedData: EmployeeDataEntry? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val hasData: Boolean = false
 )
