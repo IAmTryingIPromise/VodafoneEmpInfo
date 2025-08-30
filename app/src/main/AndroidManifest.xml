@@ -40,7 +40,7 @@
                     android:scheme="msauth"
                     android:host="com.example.vodafoneempinfo"
                     android:path="/LYffA4TMts0XsaQf/1DG6xWjDzg="/>
-                              <!-- yegkH0Ad8i8GqKR/Vmua6p+GwCY= -->
+                              <!-- yegkH0Ad8i8GqKR/Vmua6p+GwCY= LYffA4TMts0XsaQf/1DG6xWjDzg=-->
             </intent-filter>
         </activity>
 

@@ -1,5 +1,6 @@
 package com.example.vodafoneempinfo
 
+import android.util.Log
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -26,12 +27,12 @@ class ExcelRepository @Inject constructor(
 
     // Predefined employee list with their table names
     private val employees = listOf(
-        Employee("Κατερίνα Γ", "katerina"),
-        Employee("Ειρήνη Μ", "eirinim"),
-        Employee("Ειρήνη Σ", "eirinis"),
-        Employee("Αναστασία Π", "anastasia"),
-        Employee("Ευγενία Π", "eugenia"),
-        Employee("Άντα Κ", "anta"),
+        Employee("Κατερίνα Γ", "katerina", "ΚΑΤΕΡΙΝΑ ΓΚΑΡΓΚΑΝΑ"),
+        Employee("Ειρήνη Μ", "eirinim", ""),
+        Employee("Ειρήνη Σ", "eirinis", ""),
+        Employee("Αναστασία Π", "anastasia", ""),
+        Employee("Ευγενία Π", "eugenia", ""),
+        Employee("Άντα Κ", "anta", ""),
     )
 
     suspend fun getEmployees(): List<Employee> = employees
@@ -60,6 +61,114 @@ class ExcelRepository @Inject constructor(
         }
     }
 
+    // NEW EXPORT FUNCTION
+    suspend fun getEmployeeData(
+        employeeName: String,
+        date: String
+    ): Result<EmployeeDataEntry> {
+        return withContext(Dispatchers.IO) {
+            try {
+
+                //Log.d("getEmployeeData", date)
+                val employee = employees.find { it.displayName == employeeName }
+                    ?: return@withContext Result.failure(IllegalArgumentException("Employee not found"))
+
+                val tableName = employee.tableName
+
+                // Find the row index by date
+                val rowIndex = findRowByDate(date, tableName)
+                    ?: return@withContext Result.failure(IllegalArgumentException("Date not found in table"))
+
+                // Get the row data
+                val rowData = getTableRowData(tableName, rowIndex)
+                    ?: return@withContext Result.failure(IllegalArgumentException("Failed to retrieve row data"))
+
+                // Convert row data to EmployeeDataEntry
+                val employeeData = convertRowDataToEmployeeDataEntry(rowData, employeeName, date)
+
+                Result.success(employeeData)
+
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    private suspend fun getTableRowData(tableName: String, rowIndex: Int): JSONArray? {
+        return try {
+            val accessToken = getAccessToken()
+                ?: return null
+
+            val url =
+                "https://graph.microsoft.com/v1.0/sites/$siteId/drives/$driveId/items/$fileId/workbook/tables('$tableName')/rows/itemAt(index=$rowIndex)"
+
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $accessToken")
+                .build()
+
+            val response = client.newCall(request).execute()
+
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                val jsonResponse = JSONObject(responseBody)
+                val values = jsonResponse.getJSONArray("values")
+
+                if (values.length() > 0) {
+                    values.getJSONArray(0) // Return the first (and only) row's values
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun convertRowDataToEmployeeDataEntry(rowData: JSONArray, employeeName: String, date: String): EmployeeDataEntry {
+        // Helper function to safely get string value from JSONArray
+        fun getStringValue(index: Int): String {
+            return if (index < rowData.length()) {
+                val value = rowData.opt(index)
+                when (value) {
+                    is String -> value
+                    is Number -> value.toString()
+                    null -> ""
+                    else -> value.toString()
+                }
+            } else {
+                ""
+            }
+        }
+
+        return EmployeeDataEntry(
+            name = employeeName,
+            date = date,
+            portin = getStringValue(1),
+            p2p = getStringValue(2),
+            newFixedAdsl = getStringValue(3),
+            newFixedVdsl = getStringValue(4),
+            newFixedFtth = getStringValue(5),
+            fwa = getStringValue(6),
+            wirelessHome = getStringValue(7),
+            onenet = getStringValue(8),
+            fixedMigrationFtth = getStringValue(9),
+            ec2post = getStringValue(10),
+            post2post = getStringValue(11),
+            tvNew = getStringValue(12),
+            tvMigration = getStringValue(13),
+            vdslMigration = getStringValue(14),
+            phoneRenewal = getStringValue(15),
+            fixedRenewal = getStringValue(16),
+            totalEtopup = getStringValue(17),
+            totalPayments = getStringValue(18),
+            mobileDeals = getStringValue(19),
+            fixedDeals = getStringValue(20)
+        )
+    }
+
     private suspend fun findRowByDate(date: String, tableName: String): Int? {
         return try {
             val accessToken = getAccessToken()
@@ -80,6 +189,8 @@ class ExcelRepository @Inject constructor(
                 val jsonResponse = JSONObject(responseBody)
                 val rows = jsonResponse.getJSONArray("value")
 
+                //Log.d("findRowByDate", rows.toString())
+
                 // Convert app format (4/July/2025) to Excel format (4/7/2025)
                 val targetDate = convertDateFormat(date)
                 // Convert 4/7/2025 to serial number 1900
@@ -89,6 +200,8 @@ class ExcelRepository @Inject constructor(
                 for (i in 0 until rows.length()) {
                     val row = rows.getJSONObject(i)
                     val values = row.getJSONArray("values")
+
+                    //Log.d("findRowByDate", values.toString())
 
                     if (values.length() > 0) {
                         val rowValues = values.getJSONArray(0)
@@ -100,7 +213,7 @@ class ExcelRepository @Inject constructor(
                                     val trimmed = cellValue.trim()
                                     if (trimmed.isNotEmpty()) {
                                         try {
-                                            trimmed.toLong()
+                                            dateToExcel1900Serial(convertDateFormat(trimmed))
                                         } catch (e: NumberFormatException) {
                                             null
                                         }
@@ -109,6 +222,9 @@ class ExcelRepository @Inject constructor(
 
                                 else -> null
                             }
+
+                            Log.d("DateValue Value", dateValue.toString())
+                            Log.d("Date 1900 Value", date1900.toString())
 
                             if (dateValue == date1900) {
                                 return row.getInt("index")
@@ -134,7 +250,7 @@ class ExcelRepository @Inject constructor(
 
             // Prepare data array - convert date to Excel format for storage
             val rowData = JSONArray().apply {
-                put(convertDateFormat(dataEntry.date)) // Convert to Excel format (4/7/2025)
+                put(dateToExcel1900Serial(convertDateFormat(dataEntry.date))) // Convert to Excel format (4/7/2025)
                 put(dataEntry.portin)
                 put(dataEntry.p2p)
                 put(dataEntry.newFixedAdsl)
@@ -157,8 +273,33 @@ class ExcelRepository @Inject constructor(
                 put(dataEntry.fixedDeals)
             }
 
+            val rowFormating = JSONArray().apply {
+                put("dd/mm/yyyy")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+                put("General")
+            }
+
             val requestBody = JSONObject().apply {
                 put("values", JSONArray().apply { put(rowData) })
+                put("numberFormat", JSONArray().apply { put(rowFormating) })
             }
 
             val url =

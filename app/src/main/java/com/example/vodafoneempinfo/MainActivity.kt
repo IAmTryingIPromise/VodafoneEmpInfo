@@ -36,7 +36,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -101,7 +103,7 @@ fun MyApp() {
             ImportScreen(navController)
         }
         composable("export") {
-            // ExportScreen(navController)
+            ExportScreen(navController)
         }
     }
 }
@@ -920,8 +922,271 @@ private fun DataEntryTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = if (label == "FIXED DEALS") ImeAction.Done else ImeAction.Next),
         modifier = modifier.fillMaxWidth(),
         singleLine = true
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExportScreen(
+    navController: NavHostController
+) {
+    val context = LocalContext.current
+    val viewModel: DataEntryViewModel = hiltViewModel()
+
+    val exportState by viewModel.exportState.collectAsStateWithLifecycle()
+    val employees by viewModel.employees.collectAsStateWithLifecycle()
+
+    var showEmployeeDropdown by remember { mutableStateOf(false) }
+    var showDateDropdown by remember { mutableStateOf(false) }
+
+    val availableDates = remember { viewModel.getCurrentMonthDays() }
+
+    // Show error messages
+    LaunchedEffect(exportState.errorMessage) {
+        if (exportState.errorMessage != null) {
+            Toast.makeText(
+                context,
+                exportState.errorMessage,
+                Toast.LENGTH_LONG
+            ).show()
+            kotlinx.coroutines.delay(5000)
+            viewModel.clearExportError()
+        }
+    }
+
+    Box(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        IconButton(
+            onClick = {
+                navController.navigate("login")
+            },
+            modifier = Modifier.align(Alignment.TopStart)
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back"
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                text = "Export Employee Data",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+
+            // Employee Name Dropdown
+            ExposedDropdownMenuBox(
+                expanded = showEmployeeDropdown,
+                onExpandedChange = { showEmployeeDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = exportState.selectedEmployeeName,
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text("Select Employee") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEmployeeDropdown)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(
+                            type = MenuAnchorType.PrimaryNotEditable,
+                            enabled = true
+                        )
+                )
+
+                ExposedDropdownMenu(
+                    expanded = showEmployeeDropdown,
+                    onDismissRequest = { showEmployeeDropdown = false }
+                ) {
+                    employees.forEach { employee ->
+                        DropdownMenuItem(
+                            text = { Text(employee.displayName) },
+                            onClick = {
+                                viewModel.updateExportSelectedEmployee(employee)
+                                showEmployeeDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Date Dropdown
+            ExposedDropdownMenuBox(
+                expanded = showDateDropdown,
+                onExpandedChange = { showDateDropdown = it }
+            ) {
+                OutlinedTextField(
+                    value = exportState.selectedDate,
+                    onValueChange = { },
+                    readOnly = true,
+                    label = { Text("Select Date") },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showDateDropdown)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(
+                            type = MenuAnchorType.PrimaryNotEditable,
+                            enabled = true
+                        )
+                )
+
+                ExposedDropdownMenu(
+                    expanded = showDateDropdown,
+                    onDismissRequest = { showDateDropdown = false }
+                ) {
+                    availableDates.forEach { date ->
+                        DropdownMenuItem(
+                            text = { Text(date) },
+                            onClick = {
+                                viewModel.updateExportDate(date)
+                                showDateDropdown = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Export Button
+            Button(
+                onClick = { viewModel.exportData() },
+                enabled = !exportState.isLoading &&
+                        exportState.selectedEmployeeName.isNotEmpty() &&
+                        exportState.selectedDate.isNotEmpty(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                if (exportState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Export Data")
+                }
+            }
+
+            // Clear Button
+            OutlinedButton(
+                onClick = { viewModel.clearExportData() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Clear Selection")
+            }
+
+            // Display exported data
+            if (exportState.hasData && exportState.exportedData != null) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Employee Data",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                        // Employee Info
+                        DataDisplayRow("Employee", exportState.exportedData!!.name)
+                        DataDisplayRow("Date", exportState.exportedData!!.date)
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Data fields
+                        DataDisplayRow("Portin", exportState.exportedData!!.portin)
+                        DataDisplayRow("P2P", exportState.exportedData!!.p2p)
+                        DataDisplayRow("NewFixed ADSL", exportState.exportedData!!.newFixedAdsl)
+                        DataDisplayRow("NewFixed VDSL", exportState.exportedData!!.newFixedVdsl)
+                        DataDisplayRow("NewFixed FTTH", exportState.exportedData!!.newFixedFtth)
+                        DataDisplayRow("FWA", exportState.exportedData!!.fwa)
+                        DataDisplayRow("Wireless Home", exportState.exportedData!!.wirelessHome)
+                        DataDisplayRow("ONENET", exportState.exportedData!!.onenet)
+                        DataDisplayRow("Fixed Migration FTTH", exportState.exportedData!!.fixedMigrationFtth)
+                        DataDisplayRow("EC2POST", exportState.exportedData!!.ec2post)
+                        DataDisplayRow("POST2POST", exportState.exportedData!!.post2post)
+                        DataDisplayRow("TV New", exportState.exportedData!!.tvNew)
+                        DataDisplayRow("TV Migration", exportState.exportedData!!.tvMigration)
+                        DataDisplayRow("VDSL Migration", exportState.exportedData!!.vdslMigration)
+                        DataDisplayRow("Phone Renewal", exportState.exportedData!!.phoneRenewal)
+                        DataDisplayRow("Fixed Renewal", exportState.exportedData!!.fixedRenewal)
+                        DataDisplayRow("Total E-topup", exportState.exportedData!!.totalEtopup)
+                        DataDisplayRow("Total Payments", exportState.exportedData!!.totalPayments)
+                        DataDisplayRow("Mobile Deals", exportState.exportedData!!.mobileDeals)
+                        DataDisplayRow("Fixed Deals", exportState.exportedData!!.fixedDeals)
+                    }
+                }
+            }
+
+            // Error Message
+            exportState.errorMessage?.let { error ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = error,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DataDisplayRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "$label:",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(0.4f)
+        )
+
+        Text(
+            text = if (value.isEmpty()) "0" else value,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(0.6f),
+            textAlign = TextAlign.End,
+            color = if (value.isEmpty() || value == "0") {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.primary
+            }
+        )
+    }
 }

@@ -29,7 +29,8 @@ data class EmployeeDataEntry(
 
 data class Employee(
     val displayName: String,
-    val tableName: String
+    val tableName: String,
+    val userName: String
 )
 
 data class ExcelWorksheet(
