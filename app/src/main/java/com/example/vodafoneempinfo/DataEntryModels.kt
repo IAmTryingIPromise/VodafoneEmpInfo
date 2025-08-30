@@ -42,3 +42,8 @@ data class ExcelUpdateResult(
     val success: Boolean,
     val message: String
 )
+
+data class UserInfo(
+    val displayName: String,
+    val userPrincipalName: String
+)

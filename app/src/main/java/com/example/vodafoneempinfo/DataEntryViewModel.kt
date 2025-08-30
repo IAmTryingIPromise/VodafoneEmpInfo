@@ -13,7 +13,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DataEntryViewModel @Inject constructor(
-    private val excelRepository: ExcelRepository
+    private val excelRepository: ExcelRepository,
+    private val authManager: AuthManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DataEntryUiState())
@@ -21,6 +22,9 @@ class DataEntryViewModel @Inject constructor(
 
     private val _employees = MutableStateFlow<List<Employee>>(emptyList())
     val employees: StateFlow<List<Employee>> = _employees.asStateFlow()
+
+    private val _currentUserEmployee = MutableStateFlow<Employee?>(null)
+    val currentUserEmployee: StateFlow<Employee?> = _currentUserEmployee.asStateFlow()
 
     // New state for export functionality
     private val _exportState = MutableStateFlow(ExportUiState())
@@ -31,6 +35,39 @@ class DataEntryViewModel @Inject constructor(
     }
 
     private fun loadEmployees() {
+        viewModelScope.launch {
+            val currentUserName = authManager.currentUser.value
+            val allEmployees = excelRepository.getEmployees()
+
+            val currentUserEmployee = if (currentUserName != null) {
+                allEmployees.find { employee ->
+                    employee.userName.equals(currentUserName, ignoreCase = true) ||
+                            employee.displayName.equals(currentUserName, ignoreCase = true)
+                }
+            } else null
+
+            _currentUserEmployee.value = currentUserEmployee
+
+            // Check if user is admin (username contains "savvas")
+            val isAdmin = currentUserName?.lowercase()?.contains("savvas kotzamanidis") == true
+
+            // For import: admin sees all employees, regular users see only their own
+            _employees.value = if (isAdmin) {
+                allEmployees // Admin can access all tables
+            } else if (currentUserEmployee != null) {
+                listOf(currentUserEmployee) // Regular user sees only their table
+            } else {
+                allEmployees // Fallback to all employees if user not found
+            }
+
+            // Auto-select for non-admin users
+            if (!isAdmin && currentUserEmployee != null && _uiState.value.dataEntry.name.isEmpty()) {
+                updateSelectedEmployee(currentUserEmployee)
+            }
+        }
+    }
+
+    fun loadAllEmployeesForExport() {
         viewModelScope.launch {
             _employees.value = excelRepository.getEmployees()
         }

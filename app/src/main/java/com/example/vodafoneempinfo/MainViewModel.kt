@@ -19,6 +19,8 @@ class MainViewModel @Inject constructor(
 
     val authState: StateFlow<AuthState> = authManager.authState
 
+    val authManagerInstance: AuthManager get() = authManager
+
     private val _appState = MutableStateFlow(AppState())
     val appState: StateFlow<AppState> = _appState.asStateFlow()
 
@@ -30,6 +32,10 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 authManager.initializeMsal()
+                // Try to get current user if already authenticated
+                if (authManager.authState.value.isAuthenticated) {
+                    authManager.getCurrentUserDisplayName()
+                }
             } catch (e: Exception) {
                 // AuthManager handles state updates internally
             }

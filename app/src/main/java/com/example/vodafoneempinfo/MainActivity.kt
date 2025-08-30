@@ -6,9 +6,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,9 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -33,9 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.MenuAnchorType.Companion.PrimaryNotEditable
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -46,7 +40,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -117,279 +110,350 @@ fun LoginScreen(
     val authState by viewModel.authState.collectAsStateWithLifecycle()
     val appState by viewModel.appState.collectAsStateWithLifecycle()
 
-    Column(
+    val currentUser by viewModel.authManagerInstance.currentUser.collectAsStateWithLifecycle()
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF667eea),
+                        Color(0xFF764ba2)
+                    )
+                )
+            )
     ) {
-        // Header
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Vodafone Employee App",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Authentication Status
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Status: ",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    Text(
-                        text = if (authState.isAuthenticated) "Authenticated" else "Not Authenticated",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (authState.isAuthenticated)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Authentication Button
-                if (authState.isAuthenticated) {
-                    Button(
-                        onClick = { viewModel.signOut() },
-                        enabled = !authState.isLoading,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        if (authState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Text("Sign Out")
-                        }
-                    }
-                } else {
-                    Button(
-                        onClick = { viewModel.signIn()
-                            //navController.navigate("information")
-                             },
-                        enabled = !authState.isLoading
-                    ) {
-                        if (authState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
-                            Text("Sign In")
-                        }
-                    }
-                }
-            }
-        }
-
-        // Navigation buttons
-        if (authState.isAuthenticated) {
-            TextButton(
-                onClick = {
-                    navController.navigate("import")
-                },
-                border = BorderStroke(1.dp, Color.Black),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = Color.Green,
-                    contentColor = Color.Black
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    "Import Data"
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            TextButton(
-                onClick = {
-                    navController.navigate("export")
-                },
-                border = BorderStroke(1.dp, Color.Black),
-                colors = ButtonDefaults.textButtonColors(
-                    containerColor = Color.Red,
-                    contentColor = Color.Black
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text(
-                    "Export Data"
-                )
-            }
-        }
-/*
-        // File Input Section
-        if (authState.isAuthenticated) {
+            // Header Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White.copy(alpha = 0.95f)
+                ),
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Enter File Name",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    OutlinedTextField(
-                        value = appState.fileName,
-                        onValueChange = { viewModel.updateFileName(it) },
-                        label = { Text("File name (without .txt)") },
-                        placeholder = { Text("example-file") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        enabled = !appState.isLoading
-                    )
-
-                    Button(
-                        onClick = { viewModel.getFileContent() },
-                        enabled = !appState.isLoading && appState.fileName.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
+                    // App Icon/Logo placeholder
+                    Card(
+                        modifier = Modifier.size(80.dp),
+                        shape = RoundedCornerShape(40.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF667eea)
+                        )
                     ) {
-                        if (appState.isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "V",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Vodafone Employee",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2D3748),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Text(
+                        text = "Data Management App",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color(0xFF4A5568),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Authentication Status
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (authState.isAuthenticated)
+                                Color(0xFF10B981).copy(alpha = 0.1f)
+                            else
+                                Color(0xFFEF4444).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.onPrimary
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            if (authState.isAuthenticated) Color(0xFF10B981) else Color(0xFFEF4444),
+                                            CircleShape
+                                        )
                                 )
-                                Text("Loading...")
+
+                                Text(
+                                    text = if (authState.isAuthenticated) "Connected" else "Not Connected",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (authState.isAuthenticated) Color(0xFF10B981) else Color(0xFFEF4444)
+                                )
                             }
+
+                            // Show current user name when authenticated
+                            if (authState.isAuthenticated && currentUser != null) {
+                                Text(
+                                    text = "Signed in as: $currentUser",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF6B7280),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Authentication Button
+                    Button(
+                        onClick = {
+                            if (authState.isAuthenticated) viewModel.signOut() else viewModel.signIn()
+                        },
+                        enabled = !authState.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (authState.isAuthenticated)
+                                Color(0xFFEF4444)
+                            else
+                                Color(0xFF667eea)
+                        ),
+                        shape = RoundedCornerShape(16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                    ) {
+                        if (authState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White
+                            )
                         } else {
-                            Text("Get File Content")
+                            Text(
+                                text = if (authState.isAuthenticated) "Sign Out" else "Sign In with Microsoft",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
             }
-        }
-*/
-        // Error Display
-        if (authState.error != null || appState.error != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+
+            // Navigation Section
+            if (authState.isAuthenticated) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.95f)
+                    ),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "Error",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontWeight = FontWeight.SemiBold
+                            text = "Choose Action",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2D3748),
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
                         )
 
-                        TextButton(
-                            onClick = { viewModel.clearError() }
+                        Button(
+                            onClick = { navController.navigate("import") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF10B981)
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                         ) {
-                            Text("Dismiss")
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                                Text(
+                                    text = "Import Data",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = { navController.navigate("export") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF3B82F6)
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                                Text(
+                                    text = "Export Data",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
-
-                    Text(
-                        text = authState.error ?: appState.error ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
                 }
-            }
-        }
-/*
-        // File Content Display
-        if (appState.fileContent.isNotBlank()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            } else {
+                // Instructions Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White.copy(alpha = 0.95f)
+                    ),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text(
-                        text = "File Content",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                    Column(
+                        modifier = Modifier.padding(24.dp)
                     ) {
                         Text(
-                            text = appState.fileContent,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(12.dp),
-                            textAlign = TextAlign.Start
+                            text = "Getting Started",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2D3748),
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
                         )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        val instructions = listOf(
+                            "Sign in with your Microsoft account",
+                            "Import data to update your records",
+                            "Export data to view your information"
+                        )
+
+                        instructions.forEachIndexed { index, instruction ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .background(Color(0xFF667eea), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "${index + 1}",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                }
+
+                                Text(
+                                    text = instruction,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF4A5568)
+                                )
+                            }
+
+                            if (index < instructions.size - 1) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
                     }
                 }
             }
-        }
-*/
-        // Instructions Card
-        if (!authState.isAuthenticated) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+
+            // Error Display
+            if (authState.error != null || appState.error != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFEF4444).copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text(
-                        text = "Instructions",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Error",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color(0xFFEF4444),
+                                fontWeight = FontWeight.Bold
+                            )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = { viewModel.clearError() }
+                            ) {
+                                Text(
+                                    "Dismiss",
+                                    color = Color(0xFFEF4444),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
 
-                    Text(
-                        text =  "1. Sign in with your Microsoft account\n" +
-                                "2. Click Import button to import information\n" +
-                                "3. Click Export button to display information",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
+                        Text(
+                            text = authState.error ?: appState.error ?: "",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFDC2626)
+                        )
+                    }
                 }
             }
         }
@@ -608,56 +672,65 @@ fun ImportScreen(
     navController: NavHostController
 ) {
     val context = LocalContext.current
-
     val viewModel: DataEntryViewModel = hiltViewModel()
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val employees by viewModel.employees.collectAsStateWithLifecycle()
 
-    var showEmployeeDropdown by remember { mutableStateOf(false) }
+//    var showEmployeeDropdown by remember { mutableStateOf(false) }
     var showDateDropdown by remember { mutableStateOf(false) }
 
     val availableDates = remember { viewModel.getCurrentMonthDays() }
 
+    val viewModelMain: MainViewModel = hiltViewModel()
+    val currentUser by viewModelMain.authManagerInstance.currentUser.collectAsStateWithLifecycle()
+    val isAdmin = currentUser?.lowercase()?.contains("savvas kotzamanidis") == true
+
     // Show success/error messages
     LaunchedEffect(uiState.isSubmissionSuccessful) {
         if (uiState.isSubmissionSuccessful) {
-            Toast.makeText(
-                context,
-                "Input Successful",
-                Toast.LENGTH_LONG
-            ).show()
+            Toast.makeText(context, "Input Successful", Toast.LENGTH_LONG).show()
             viewModel.clearSuccessFlag()
         }
     }
 
     LaunchedEffect(uiState.errorMessage) {
         if (uiState.errorMessage != null) {
-            Toast.makeText(
-                context,
-                uiState.errorMessage,
-                Toast.LENGTH_LONG
-            ).show()
+            Toast.makeText(context, uiState.errorMessage, Toast.LENGTH_LONG).show()
             kotlinx.coroutines.delay(5000)
             viewModel.clearError()
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier.fillMaxSize()
     ) {
-
-        IconButton(
-            onClick = {
-                navController.navigate("login")
+        // Top App Bar
+        TopAppBar(
+            title = {
+                Text(
+                    text = "Import Data",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             },
-            modifier = Modifier.align(Alignment.TopStart)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back"
+            navigationIcon = {
+                IconButton(
+                    onClick = { navController.navigate("login") }
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color(0xFF667eea)
             )
-        }
+        )
+
+        // Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -665,50 +738,121 @@ fun ImportScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Employee Data Entry",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
+            // Employee Name Dropdown (now restricted to current user)
+            if (isAdmin) {
+                var showEmployeeDropdown by remember { mutableStateOf(false) }
 
-            // Employee Name Dropdown
-            ExposedDropdownMenuBox(
-                expanded = showEmployeeDropdown,
-                onExpandedChange = { showEmployeeDropdown = it }
-            ) {
+                ExposedDropdownMenuBox(
+                    expanded = showEmployeeDropdown,
+                    onExpandedChange = { showEmployeeDropdown = it }
+                ) {
+                    OutlinedTextField(
+                        value = uiState.dataEntry.name,
+                        onValueChange = { },
+                        readOnly = true,
+                        label = { Text("Select Employee (Admin)") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEmployeeDropdown)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(
+                                type = PrimaryNotEditable,
+                                enabled = true
+                            )
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = showEmployeeDropdown,
+                        onDismissRequest = { showEmployeeDropdown = false }
+                    ) {
+                        employees.forEach { employee ->
+                            DropdownMenuItem(
+                                text = { Text(employee.displayName) },
+                                onClick = {
+                                    viewModel.updateSelectedEmployee(employee)
+                                    showEmployeeDropdown = false
+                                }
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Static field for regular users
                 OutlinedTextField(
                     value = uiState.dataEntry.name,
                     onValueChange = { },
                     readOnly = true,
-                    label = { Text("Name") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEmployeeDropdown)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor(
-                            type = PrimaryNotEditable,
-                            enabled = true
-                        )
+                    enabled = false,
+                    label = { Text("Your Name (Auto-selected)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
                 )
-
-                ExposedDropdownMenu(
-                    expanded = showEmployeeDropdown,
-                    onDismissRequest = { showEmployeeDropdown = false }
-                ) {
-                    employees.forEach { employee ->
-                        DropdownMenuItem(
-                            text = { Text(employee.displayName) },
-                            onClick = {
-                                viewModel.updateSelectedEmployee(employee)
-                                showEmployeeDropdown = false
-                            }
-                        )
-                    }
-                }
             }
+            /*
+                        OutlinedTextField(
+                            value = uiState.dataEntry.name,
+                            onValueChange = { }, // No-op since it's read-only
+                            readOnly = true,
+                            enabled = false, // This makes it grayed out
+                            label = { Text("Your Name (Auto-selected)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        )
+                       ExposedDropdownMenuBox(
+                            expanded = showEmployeeDropdown,
+                            onExpandedChange = { showEmployeeDropdown = it }
+                        ) {
+                            OutlinedTextField(
+                                value = uiState.dataEntry.name,
+                                onValueChange = { },
+                                readOnly = true,
+                                label = { Text("Name") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showEmployeeDropdown)
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor(
+                                        type = PrimaryNotEditable,
+                                        enabled = employees.size > 1 // Only enable if more than one option
+                                    )
+                            )
 
+                            if (employees.size > 1) {
+                                ExposedDropdownMenu(
+                                    expanded = showEmployeeDropdown,
+                                    onDismissRequest = { showEmployeeDropdown = false }
+                                ) {
+                                    employees.forEach { employee ->
+                                        DropdownMenuItem(
+                                            text = { Text(employee.displayName) },
+                                            onClick = {
+                                                viewModel.updateSelectedEmployee(employee)
+                                                showEmployeeDropdown = false
+                                            }
+                                        )
+                                    }
+                                }
+                            } else if (employees.size == 1) {
+                                // Auto-select the single employee
+                                LaunchedEffect(employees) {
+                                    if (uiState.dataEntry.name.isEmpty()) {
+                                        viewModel.updateSelectedEmployee(employees.first())
+                                    }
+                                }
+                            }
+                        }
+            */
+            // Rest of the form remains the same...
             // Date Dropdown
             ExposedDropdownMenuBox(
                 expanded = showDateDropdown,
@@ -746,126 +890,27 @@ fun ImportScreen(
                 }
             }
 
-            // Numeric Input Fields
-            DataEntryTextField(
-                value = uiState.dataEntry.portin,
-                onValueChange = viewModel::updatePortin,
-                label = "Portin"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.p2p,
-                onValueChange = viewModel::updateP2P,
-                label = "P2P"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.newFixedAdsl,
-                onValueChange = viewModel::updateNewFixedAdsl,
-                label = "NewFixed ADSL"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.newFixedVdsl,
-                onValueChange = viewModel::updateNewFixedVdsl,
-                label = "NewFixed VDSL"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.newFixedFtth,
-                onValueChange = viewModel::updateNewFixedFtth,
-                label = "NewFixed FTTH"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.fwa,
-                onValueChange = viewModel::updateFwa,
-                label = "FWA"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.wirelessHome,
-                onValueChange = viewModel::updateWirelessHome,
-                label = "Wireless Home"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.onenet,
-                onValueChange = viewModel::updateOnenet,
-                label = "ONENET"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.fixedMigrationFtth,
-                onValueChange = viewModel::updateFixedMigrationFtth,
-                label = "FIXED MIGRATION FTTH"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.ec2post,
-                onValueChange = viewModel::updateEc2post,
-                label = "EC2POST"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.post2post,
-                onValueChange = viewModel::updatePost2post,
-                label = "POST2POST"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.tvNew,
-                onValueChange = viewModel::updateTvNew,
-                label = "TV NEW"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.tvMigration,
-                onValueChange = viewModel::updateTvMigration,
-                label = "TV MIGRATION"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.vdslMigration,
-                onValueChange = viewModel::updateVdslMigration,
-                label = "VDSL MIGRATION"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.phoneRenewal,
-                onValueChange = viewModel::updatePhoneRenewal,
-                label = "PHONE RENEWAL"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.fixedRenewal,
-                onValueChange = viewModel::updateFixedRenewal,
-                label = "FIXED RENEWAL"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.totalEtopup,
-                onValueChange = viewModel::updateTotalEtopup,
-                label = "TOTAL ETOPUP"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.totalPayments,
-                onValueChange = viewModel::updateTotalPayments,
-                label = "TOTAL PAYMENTS"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.mobileDeals,
-                onValueChange = viewModel::updateMobileDeals,
-                label = "MOBILE DEALS"
-            )
-
-            DataEntryTextField(
-                value = uiState.dataEntry.fixedDeals,
-                onValueChange = viewModel::updateFixedDeals,
-                label = "FIXED DEALS"
-            )
+            // All the numeric input fields remain the same...
+            DataEntryTextField(value = uiState.dataEntry.portin, onValueChange = viewModel::updatePortin, label = "Portin")
+            DataEntryTextField(value = uiState.dataEntry.p2p, onValueChange = viewModel::updateP2P, label = "P2P")
+            DataEntryTextField(value = uiState.dataEntry.newFixedAdsl, onValueChange = viewModel::updateNewFixedAdsl, label = "NewFixed ADSL")
+            DataEntryTextField(value = uiState.dataEntry.newFixedVdsl, onValueChange = viewModel::updateNewFixedVdsl, label = "NewFixed VDSL")
+            DataEntryTextField(value = uiState.dataEntry.newFixedFtth, onValueChange = viewModel::updateNewFixedFtth, label = "NewFixed FTTH")
+            DataEntryTextField(value = uiState.dataEntry.fwa, onValueChange = viewModel::updateFwa, label = "FWA")
+            DataEntryTextField(value = uiState.dataEntry.wirelessHome, onValueChange = viewModel::updateWirelessHome, label = "Wireless Home")
+            DataEntryTextField(value = uiState.dataEntry.onenet, onValueChange = viewModel::updateOnenet, label = "ONENET")
+            DataEntryTextField(value = uiState.dataEntry.fixedMigrationFtth, onValueChange = viewModel::updateFixedMigrationFtth, label = "FIXED MIGRATION FTTH")
+            DataEntryTextField(value = uiState.dataEntry.ec2post, onValueChange = viewModel::updateEc2post, label = "EC2POST")
+            DataEntryTextField(value = uiState.dataEntry.post2post, onValueChange = viewModel::updatePost2post, label = "POST2POST")
+            DataEntryTextField(value = uiState.dataEntry.tvNew, onValueChange = viewModel::updateTvNew, label = "TV NEW")
+            DataEntryTextField(value = uiState.dataEntry.tvMigration, onValueChange = viewModel::updateTvMigration, label = "TV MIGRATION")
+            DataEntryTextField(value = uiState.dataEntry.vdslMigration, onValueChange = viewModel::updateVdslMigration, label = "VDSL MIGRATION")
+            DataEntryTextField(value = uiState.dataEntry.phoneRenewal, onValueChange = viewModel::updatePhoneRenewal, label = "PHONE RENEWAL")
+            DataEntryTextField(value = uiState.dataEntry.fixedRenewal, onValueChange = viewModel::updateFixedRenewal, label = "FIXED RENEWAL")
+            DataEntryTextField(value = uiState.dataEntry.totalEtopup, onValueChange = viewModel::updateTotalEtopup, label = "TOTAL ETOPUP")
+            DataEntryTextField(value = uiState.dataEntry.totalPayments, onValueChange = viewModel::updateTotalPayments, label = "TOTAL PAYMENTS")
+            DataEntryTextField(value = uiState.dataEntry.mobileDeals, onValueChange = viewModel::updateMobileDeals, label = "MOBILE DEALS")
+            DataEntryTextField(value = uiState.dataEntry.fixedDeals, onValueChange = viewModel::updateFixedDeals, label = "FIXED DEALS")
 
             // Error Message
             uiState.errorMessage?.let { error ->
@@ -900,7 +945,6 @@ fun ImportScreen(
                 }
             }
 
-            // Clear Form Button
             OutlinedButton(
                 onClick = { viewModel.clearForm() },
                 modifier = Modifier.fillMaxWidth()
@@ -944,34 +988,49 @@ fun ExportScreen(
 
     val availableDates = remember { viewModel.getCurrentMonthDays() }
 
+    // Load all employees for export (different from import)
+    LaunchedEffect(Unit) {
+        viewModel.loadAllEmployeesForExport()
+    }
+
     // Show error messages
     LaunchedEffect(exportState.errorMessage) {
         if (exportState.errorMessage != null) {
-            Toast.makeText(
-                context,
-                exportState.errorMessage,
-                Toast.LENGTH_LONG
-            ).show()
+            Toast.makeText(context, exportState.errorMessage, Toast.LENGTH_LONG).show()
             kotlinx.coroutines.delay(5000)
             viewModel.clearExportError()
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        IconButton(
-            onClick = {
-                navController.navigate("login")
+        // Top App Bar
+        TopAppBar(
+            title = {
+                Text(
+                    text = "Export Data",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
             },
-            modifier = Modifier.align(Alignment.TopStart)
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back"
+            navigationIcon = {
+                IconButton(
+                    onClick = { navController.navigate("login") }
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color(0xFF3B82F6)
             )
-        }
+        )
 
+        // Content
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -979,14 +1038,7 @@ fun ExportScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Export Employee Data",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-
-            // Employee Name Dropdown
+            // Employee Name Dropdown (shows all employees for export)
             ExposedDropdownMenuBox(
                 expanded = showEmployeeDropdown,
                 onExpandedChange = { showEmployeeDropdown = it }
@@ -1002,7 +1054,7 @@ fun ExportScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(
-                            type = MenuAnchorType.PrimaryNotEditable,
+                            type = PrimaryNotEditable,
                             enabled = true
                         )
                 )
@@ -1023,6 +1075,9 @@ fun ExportScreen(
                 }
             }
 
+            // Rest of the export screen remains the same...
+            // Date Dropdown, Export Button, Display Data, etc.
+
             // Date Dropdown
             ExposedDropdownMenuBox(
                 expanded = showDateDropdown,
@@ -1039,7 +1094,7 @@ fun ExportScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(
-                            type = MenuAnchorType.PrimaryNotEditable,
+                            type = PrimaryNotEditable,
                             enabled = true
                         )
                 )
@@ -1178,7 +1233,7 @@ private fun DataDisplayRow(
         )
 
         Text(
-            text = if (value.isEmpty()) "0" else value,
+            text = value.ifEmpty { "0" },
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(0.6f),
             textAlign = TextAlign.End,

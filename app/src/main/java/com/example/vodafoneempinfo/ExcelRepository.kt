@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.IOException
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -27,6 +26,7 @@ class ExcelRepository @Inject constructor(
 
     // Predefined employee list with their table names
     private val employees = listOf(
+        //Employee("Σάββας Κ", "savvas", "SAVVAS KOTZAMANIDIS"),
         Employee("Κατερίνα Γ", "katerina", "ΚΑΤΕΡΙΝΑ ΓΚΑΡΓΚΑΝΑ"),
         Employee("Ειρήνη Μ", "eirinim", ""),
         Employee("Ειρήνη Σ", "eirinis", ""),
@@ -35,7 +35,7 @@ class ExcelRepository @Inject constructor(
         Employee("Άντα Κ", "anta", ""),
     )
 
-    suspend fun getEmployees(): List<Employee> = employees
+    fun getEmployees(): List<Employee> = employees
 
     suspend fun updateEmployeeData(
         employeeName: String,
@@ -58,6 +58,51 @@ class ExcelRepository @Inject constructor(
             } catch (e: Exception) {
                 Result.failure(e)
             }
+        }
+    }
+
+    suspend fun getCurrentUserEmployee(): Employee? {
+        return try {
+            val accessToken = getAccessToken() ?: return null
+
+            // Get current user info from Microsoft Graph
+            val userInfo = getCurrentUserInfo(accessToken)
+            val currentUserName = userInfo?.displayName ?: return null
+
+            // Find matching employee based on userName field
+            employees.find { employee ->
+                employee.userName.equals(currentUserName, ignoreCase = true) ||
+                        employee.displayName.equals(currentUserName, ignoreCase = true)
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun getCurrentUserInfo(accessToken: String): UserInfo? {
+        return try {
+            val url = "https://graph.microsoft.com/v1.0/me"
+
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $accessToken")
+                //.addHeader("Accept", "application/json")
+                .build()
+
+            val response = client.newCall(request).execute()
+
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: ""
+                val jsonResponse = JSONObject(responseBody)
+                UserInfo(
+                    displayName = jsonResponse.optString("displayName", ""),
+                    userPrincipalName = jsonResponse.optString("userPrincipalName", "")
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -173,7 +218,6 @@ class ExcelRepository @Inject constructor(
         return try {
             val accessToken = getAccessToken()
                 ?: return null
-
             val url =
                 "https://graph.microsoft.com/v1.0/sites/$siteId/drives/$driveId/items/$fileId/workbook/tables('$tableName')/rows"
 
@@ -181,7 +225,6 @@ class ExcelRepository @Inject constructor(
                 .url(url)
                 .addHeader("Authorization", "Bearer $accessToken")
                 .build()
-
             val response = client.newCall(request).execute()
 
             if (response.isSuccessful) {

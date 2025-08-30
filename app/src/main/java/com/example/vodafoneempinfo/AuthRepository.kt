@@ -8,7 +8,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import javax.inject.Inject
 import kotlin.collections.first
 import kotlin.collections.isNullOrEmpty
-import kotlin.collections.toList
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 

@@ -1,11 +1,12 @@
 package com.example.vodafoneempinfo
 
-import android.app.Activity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Singleton manager that bridges Activity context with ViewModels
@@ -17,6 +18,9 @@ class AuthManager @Inject constructor() {
 
     private val _authState = MutableStateFlow(AuthState())
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
+
+    private val _currentUser = MutableStateFlow<String?>(null)
+    val currentUser: StateFlow<String?> = _currentUser.asStateFlow()
 
     // Called from Activity to set the activity-scoped AuthRepository
     fun setAuthRepository(authRepository: AuthRepository) {
@@ -63,6 +67,37 @@ class AuthManager @Inject constructor() {
         }
     }
 
+    suspend fun getCurrentUserDisplayName(): String? {
+        val authRepo = activityAuthRepository ?: return null
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val accessToken = authRepo.getAccessToken() ?: return@withContext null
+
+                val client = okhttp3.OkHttpClient()
+                val request = okhttp3.Request.Builder()
+                    .url("https://graph.microsoft.com/v1.0/me")
+                    .addHeader("Authorization", "Bearer $accessToken")
+                    .addHeader("Accept", "application/json")
+                    .build()
+
+                val response = client.newCall(request).execute()
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string() ?: ""
+                    val jsonResponse = org.json.JSONObject(responseBody)
+                    val displayName = jsonResponse.optString("displayName", "")
+                    _currentUser.value = displayName
+                    displayName
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
     suspend fun signIn(): String? {
         val authRepo = activityAuthRepository
             ?: throw Exception("AuthRepository not available - Activity may not be ready")
@@ -76,6 +111,10 @@ class AuthManager @Inject constructor() {
                 accessToken = token,
                 error = null
             )
+
+            // Get current user info after successful sign in
+            getCurrentUserDisplayName()
+
             token
         } catch (e: Exception) {
             _authState.value = _authState.value.copy(
