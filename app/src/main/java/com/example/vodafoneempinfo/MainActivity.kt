@@ -1107,7 +1107,7 @@ fun ExportScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
 
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         // Employee Info
                         DataDisplayRow("Employee", exportState.exportedData!!.name)
